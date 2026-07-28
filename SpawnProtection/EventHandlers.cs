@@ -21,14 +21,17 @@ namespace SpawnProtection
             if (ev.Player == null || !ev.IsAllowed)
                 return;
 
-            if (manager.HasFullProtection(ev.Player))
+            bool isPlayerAttack = ev.Attacker != null && ev.Attacker != ev.Player;
+
+            // Full protection only blocks damage caused by another player.
+            // Environmental damage such as falling, Tesla, Warhead or candies remains unaffected.
+            if (isPlayerAttack && manager.HasFullProtection(ev.Player))
             {
                 ev.IsAllowed = false;
                 return;
             }
 
-            if (ev.Attacker != null
-                && ev.Attacker != ev.Player
+            if (isPlayerAttack
                 && manager.HasTeamProtection(ev.Player)
                 && ProtectionManager.AreFriendly(ev.Attacker, ev.Player))
             {
@@ -37,8 +40,7 @@ namespace SpawnProtection
             }
 
             if (Plugin.Instance.Config.RemoveFullProtectionOnAttack
-                && ev.Attacker != null
-                && ev.Attacker != ev.Player
+                && isPlayerAttack
                 && ev.Amount > 0f
                 && manager.HasFullProtection(ev.Attacker))
             {
