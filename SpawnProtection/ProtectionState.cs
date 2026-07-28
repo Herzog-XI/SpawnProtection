@@ -1,5 +1,6 @@
 using System;
 using System.Threading;
+using HintServiceMeow.Core.Models.Hints;
 
 namespace SpawnProtection
 {
@@ -9,6 +10,7 @@ namespace SpawnProtection
         public DateTime TeamProtectionEndsAt { get; set; }
         public bool FullProtectionRemoved { get; set; }
         public Timer Timer { get; set; }
+        public AbstractHint HudHint { get; set; }
 
         public bool HasFullProtection => !FullProtectionRemoved && DateTime.UtcNow < FullProtectionEndsAt;
         public bool HasTeamProtection => DateTime.UtcNow < TeamProtectionEndsAt;
@@ -17,6 +19,7 @@ namespace SpawnProtection
         {
             Timer?.Dispose();
             Timer = null;
+            HudHint = null;
         }
     }
 }
