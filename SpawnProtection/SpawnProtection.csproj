@@ -12,6 +12,5 @@
 
   <ItemGroup>
     <PackageReference Include="ExMod.Exiled" Version="9.14.2" />
-    <PackageReference Include="HintServiceMeow-Exiled" Version="5.5.1" />
   </ItemGroup>
 </Project>
