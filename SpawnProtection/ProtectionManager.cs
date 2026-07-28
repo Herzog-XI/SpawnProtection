@@ -223,7 +223,7 @@ namespace SpawnProtection
                 SetProperty(hint, "XCoordinate", plugin.Config.HudXCoordinate);
                 SetProperty(hint, "YCoordinate", plugin.Config.HudYCoordinate);
                 SetEnumProperty(hint, "YCoordinateAlign", "Bottom");
-                SetEnumProperty(hint, "Alignment", "Right");
+                SetEnumProperty(hint, "Alignment", "Center");
                 SetProperty(hint, "FontSize", Math.Max(1, plugin.Config.HudFontSize));
                 SetEnumProperty(hint, "SyncSpeed", "Fast");
 
