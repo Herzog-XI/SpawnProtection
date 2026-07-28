@@ -16,10 +16,11 @@ namespace SpawnProtection
 
         private Type hintType;
         private Type playerDisplayType;
-        private MethodInfo playerDisplayGetMethod;
+        private MethodInfo playerDisplayFactoryMethod;
         private MethodInfo addHintMethod;
         private MethodInfo removeHintMethod;
         private bool hsmResolved;
+        private bool hsmWarningShown;
 
         public ProtectionManager(Plugin plugin)
         {
@@ -210,7 +211,12 @@ namespace SpawnProtection
             {
                 if (!ResolveHintServiceMeow())
                 {
-                    Log.Warn("[SpawnProtection] HintServiceMeow-Exiled was not found. Protection works, but the HUD timer is disabled.");
+                    if (!hsmWarningShown)
+                    {
+                        hsmWarningShown = true;
+                        Log.Warn("[SpawnProtection] HintServiceMeow API was not found. Protection works, but the HUD timer is disabled.");
+                    }
+
                     return null;
                 }
 
@@ -224,7 +230,10 @@ namespace SpawnProtection
                 SetProperty(hint, "FontSize", Math.Max(1, plugin.Config.HudFontSize));
                 SetEnumProperty(hint, "SyncSpeed", "Fast");
 
-                object display = playerDisplayGetMethod.Invoke(null, new object[] { player });
+                object display = GetPlayerDisplay(player);
+                if (display == null)
+                    throw new InvalidOperationException("HintServiceMeow returned no PlayerDisplay for the player.");
+
                 addHintMethod.Invoke(display, new[] { hint });
                 return hint;
             }
@@ -245,8 +254,9 @@ namespace SpawnProtection
                 if (!ResolveHintServiceMeow())
                     return;
 
-                object display = playerDisplayGetMethod.Invoke(null, new object[] { player });
-                removeHintMethod.Invoke(display, new[] { state.HudHint });
+                object display = GetPlayerDisplay(player);
+                if (display != null)
+                    removeHintMethod.Invoke(display, new[] { state.HudHint });
             }
             catch
             {
@@ -257,33 +267,112 @@ namespace SpawnProtection
         private bool ResolveHintServiceMeow()
         {
             if (hsmResolved)
-                return hintType != null;
+                return true;
 
-            hsmResolved = true;
-            Assembly assembly = AppDomain.CurrentDomain.GetAssemblies()
-                .FirstOrDefault(item => item.GetName().Name.Equals("HintServiceMeow-Exiled", StringComparison.OrdinalIgnoreCase));
+            Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
 
-            if (assembly == null)
-                return false;
+            foreach (Assembly assembly in assemblies)
+            {
+                hintType = assembly.GetType("HintServiceMeow.Core.Models.Hints.Hint", false);
+                if (hintType != null)
+                    break;
+            }
 
-            hintType = assembly.GetType("HintServiceMeow.Core.Models.Hints.Hint");
-            playerDisplayType = assembly.GetType("HintServiceMeow.Core.Utilities.PlayerDisplay");
+            foreach (Assembly assembly in assemblies)
+            {
+                playerDisplayType = assembly.GetType("HintServiceMeow.Core.Utilities.PlayerDisplay", false);
+                if (playerDisplayType != null)
+                    break;
+            }
+
             if (hintType == null || playerDisplayType == null)
                 return false;
 
-            playerDisplayGetMethod = playerDisplayType.GetMethods(BindingFlags.Public | BindingFlags.Static)
-                .FirstOrDefault(method => method.Name == "Get" && method.GetParameters().Length == 1);
-
-            if (playerDisplayGetMethod == null)
+            playerDisplayFactoryMethod = FindPlayerDisplayFactory(assemblies);
+            if (playerDisplayFactoryMethod == null)
                 return false;
 
-            Type displayType = playerDisplayGetMethod.ReturnType;
-            addHintMethod = displayType.GetMethods(BindingFlags.Public | BindingFlags.Instance)
+            addHintMethod = playerDisplayType.GetMethods(BindingFlags.Public | BindingFlags.Instance)
                 .FirstOrDefault(method => method.Name == "AddHint" && method.GetParameters().Length == 1);
-            removeHintMethod = displayType.GetMethods(BindingFlags.Public | BindingFlags.Instance)
+            removeHintMethod = playerDisplayType.GetMethods(BindingFlags.Public | BindingFlags.Instance)
                 .FirstOrDefault(method => method.Name == "RemoveHint" && method.GetParameters().Length == 1);
 
-            return addHintMethod != null && removeHintMethod != null;
+            if (addHintMethod == null || removeHintMethod == null)
+                return false;
+
+            hsmResolved = true;
+            Log.Info($"[SpawnProtection] HintServiceMeow HUD API detected through {playerDisplayFactoryMethod.DeclaringType?.FullName}.{playerDisplayFactoryMethod.Name}.");
+            return true;
+        }
+
+        private MethodInfo FindPlayerDisplayFactory(IEnumerable<Assembly> assemblies)
+        {
+            MethodInfo directMethod = playerDisplayType.GetMethods(BindingFlags.Public | BindingFlags.Static)
+                .FirstOrDefault(method =>
+                    (method.Name == "Get" || method.Name == "GetPlayerDisplay")
+                    && method.GetParameters().Length == 1
+                    && playerDisplayType.IsAssignableFrom(method.ReturnType));
+
+            if (directMethod != null)
+                return directMethod;
+
+            foreach (Assembly assembly in assemblies.Where(item =>
+                item.GetName().Name.IndexOf("HintServiceMeow", StringComparison.OrdinalIgnoreCase) >= 0))
+            {
+                foreach (Type type in GetLoadableTypes(assembly))
+                {
+                    MethodInfo extensionMethod = type.GetMethods(BindingFlags.Public | BindingFlags.Static)
+                        .FirstOrDefault(method =>
+                            (method.Name == "GetPlayerDisplay" || method.Name == "Get")
+                            && method.GetParameters().Length == 1
+                            && playerDisplayType.IsAssignableFrom(method.ReturnType));
+
+                    if (extensionMethod != null)
+                        return extensionMethod;
+                }
+            }
+
+            return null;
+        }
+
+        private object GetPlayerDisplay(Player player)
+        {
+            ParameterInfo parameter = playerDisplayFactoryMethod.GetParameters()[0];
+            object argument = ResolvePlayerArgument(player, parameter.ParameterType);
+            if (argument == null)
+                throw new InvalidOperationException($"Cannot convert EXILED player to {parameter.ParameterType.FullName} for HintServiceMeow.");
+
+            return playerDisplayFactoryMethod.Invoke(null, new[] { argument });
+        }
+
+        private static object ResolvePlayerArgument(Player player, Type targetType)
+        {
+            if (targetType.IsInstanceOfType(player))
+                return player;
+
+            PropertyInfo referenceHubProperty = player.GetType().GetProperty("ReferenceHub", BindingFlags.Public | BindingFlags.Instance);
+            object referenceHub = referenceHubProperty?.GetValue(player);
+            if (referenceHub != null && targetType.IsInstanceOfType(referenceHub))
+                return referenceHub;
+
+            PropertyInfo gameObjectProperty = player.GetType().GetProperty("GameObject", BindingFlags.Public | BindingFlags.Instance);
+            object gameObject = gameObjectProperty?.GetValue(player);
+            if (gameObject != null && targetType.IsInstanceOfType(gameObject))
+                return gameObject;
+
+            return null;
+        }
+
+        private static IEnumerable<Type> GetLoadableTypes(Assembly assembly)
+        {
+            try
+            {
+                return assembly.GetTypes();
+            }
+            catch (ReflectionTypeLoadException exception)
+            {
+                return exception.Types.Where(type => type != null);
+            }
         }
 
         private static void SetProperty(object target, string propertyName, object value)
