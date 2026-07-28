@@ -29,11 +29,11 @@ namespace SpawnProtection
         [Description("How often the timer text is refreshed, in seconds.")]
         public float TimerRefreshRate { get; set; } = 0.25f;
 
-        [Description("Horizontal HUD coordinate. Higher values move the timer to the right.")]
-        public float HudXCoordinate { get; set; } = 1080f;
+        [Description("Horizontal HUD offset from screen center. Positive values move the timer right; negative values move it left.")]
+        public float HudXCoordinate { get; set; } = 0f;
 
         [Description("Vertical HUD coordinate. Higher values move the timer lower on the screen.")]
-        public float HudYCoordinate { get; set; } = 970f;
+        public float HudYCoordinate { get; set; } = 900f;
 
         [Description("HUD font size.")]
         public int HudFontSize { get; set; } = 16;
