@@ -190,11 +190,8 @@ namespace SpawnProtection
             string text;
             if (state.HasFullProtection)
             {
-                int fullSeconds = Math.Max(0, (int)Math.Ceiling((state.FullProtectionEndsAt - DateTime.UtcNow).TotalSeconds));
-                int teamSeconds = Math.Max(0, (int)Math.Ceiling((state.TeamProtectionEndsAt - DateTime.UtcNow).TotalSeconds));
-                string fullText = plugin.Config.FullProtectionHint?.Replace("{time}", fullSeconds.ToString());
-                string teamText = plugin.Config.TeamProtectionHint?.Replace("{time}", teamSeconds.ToString());
-                text = $"{fullText}\n{teamText}";
+                int seconds = Math.Max(0, (int)Math.Ceiling((state.FullProtectionEndsAt - DateTime.UtcNow).TotalSeconds));
+                text = plugin.Config.FullProtectionHint?.Replace("{time}", seconds.ToString());
             }
             else
             {
