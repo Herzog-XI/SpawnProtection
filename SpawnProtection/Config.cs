@@ -11,8 +11,11 @@ namespace SpawnProtection
         [Description("Whether debug messages are shown in the server console.")]
         public bool Debug { get; set; } = false;
 
-        [Description("Maximum duration of full player-damage immunity after spawning, in seconds.")]
+        [Description("Maximum duration of full player-damage immunity for all eligible roles except Chaos, in seconds.")]
         public float FullProtectionDuration { get; set; } = 10f;
+
+        [Description("Maximum duration of full player-damage immunity for Chaos Insurgency, in seconds.")]
+        public float ChaosFullProtectionDuration { get; set; } = 8f;
 
         [Description("Duration of team-damage protection from the moment of spawning, in seconds.")]
         public float TeamProtectionDuration { get; set; } = 60f;
@@ -20,17 +23,26 @@ namespace SpawnProtection
         [Description("Remove full protection as soon as the protected player successfully attacks another player.")]
         public bool RemoveFullProtectionOnAttack { get; set; } = true;
 
-        [Description("Show a small protection timer to protected players.")]
+        [Description("Show a small protection timer using HintServiceMeow.")]
         public bool ShowTimer { get; set; } = true;
 
-        [Description("How often the timer is refreshed, in seconds.")]
-        public float TimerRefreshRate { get; set; } = 1f;
+        [Description("How often the timer text is refreshed, in seconds.")]
+        public float TimerRefreshRate { get; set; } = 0.25f;
 
-        [Description("Hint shown while full protection is active. Available placeholder: {time}.")]
-        public string FullProtectionHint { get; set; } = "<size=18><align=right><voffset=-16em><color=#55CCFF>Vollschutz: {time}s</color></voffset></align></size>";
+        [Description("Horizontal HUD coordinate. Higher values move the timer to the right.")]
+        public float HudXCoordinate { get; set; } = 650f;
 
-        [Description("Hint shown while only team protection is active. Available placeholder: {time}.")]
-        public string TeamProtectionHint { get; set; } = "<size=18><align=right><voffset=-16em><color=#66FF99>Teamschutz: {time}s</color></voffset></align></size>";
+        [Description("Vertical HUD coordinate. Higher values move the timer lower on the screen.")]
+        public float HudYCoordinate { get; set; } = 865f;
+
+        [Description("HUD font size.")]
+        public int HudFontSize { get; set; } = 18;
+
+        [Description("Text shown while full protection is active. Available placeholder: {time}.")]
+        public string FullProtectionHint { get; set; } = "<color=#55CCFF>Vollschutz: {time}s</color>";
+
+        [Description("Text shown while only team protection is active. Available placeholder: {time}.")]
+        public string TeamProtectionHint { get; set; } = "<color=#66FF99>Teamschutz: {time}s</color>";
 
         [Description("Message shown when full protection ends because the player attacked.")]
         public string AttackEndedHint { get; set; } = "<color=#FFD166>Vollschutz beendet: Du hast angegriffen.</color>";
