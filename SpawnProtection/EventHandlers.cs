@@ -1,30 +1,19 @@
-using Exiled.API.Features;
 using Exiled.Events.EventArgs.Player;
-using Exiled.Events.EventArgs.Server;
-using MEC;
 
 namespace SpawnProtection
 {
     internal sealed class EventHandlers
     {
-        public void OnVerified(VerifiedEventArgs ev)
+        private readonly ProtectionManager manager;
+
+        public EventHandlers(ProtectionManager manager)
         {
-            Timing.CallDelayed(0.5f, () =>
-            {
-                if (ev.Player != null && ProtectionManager.IsEligible(ev.Player))
-                    ProtectionManager.Apply(ev.Player);
-            });
+            this.manager = manager;
         }
 
-        public void OnChangingRole(ChangingRoleEventArgs ev)
+        public void OnSpawned(SpawnedEventArgs ev)
         {
-            ProtectionManager.Remove(ev.Player);
-
-            Timing.CallDelayed(0.6f, () =>
-            {
-                if (ev.Player != null && ProtectionManager.IsEligible(ev.Player))
-                    ProtectionManager.Apply(ev.Player);
-            });
+            manager.Apply(ev.Player);
         }
 
         public void OnHurting(HurtingEventArgs ev)
@@ -32,45 +21,44 @@ namespace SpawnProtection
             if (ev.Player == null || !ev.IsAllowed)
                 return;
 
-            if (ProtectionManager.HasFullProtection(ev.Player))
+            if (manager.HasFullProtection(ev.Player))
             {
                 ev.IsAllowed = false;
-                ev.Amount = 0f;
                 return;
             }
 
-            Player attacker = ev.Attacker;
-            if (attacker == null || attacker == ev.Player)
-                return;
-
-            if (Plugin.Instance.Config.RemoveFullProtectionOnAttack && ev.Amount > 0f)
-                ProtectionManager.RemoveFullProtectionBecauseOfAttack(attacker);
-
-            if (ProtectionManager.HasTeamProtection(ev.Player) && attacker.Role.Team == ev.Player.Role.Team)
+            if (ev.Attacker != null
+                && ev.Attacker != ev.Player
+                && manager.HasTeamProtection(ev.Player)
+                && ProtectionManager.AreFriendly(ev.Attacker, ev.Player))
             {
                 ev.IsAllowed = false;
-                ev.Amount = 0f;
+                return;
+            }
+
+            if (Plugin.Instance.Config.RemoveFullProtectionOnAttack
+                && ev.Attacker != null
+                && ev.Attacker != ev.Player
+                && ev.Amount > 0f
+                && manager.HasFullProtection(ev.Attacker))
+            {
+                manager.RemoveFullProtection(ev.Attacker, true);
             }
         }
 
         public void OnDied(DiedEventArgs ev)
         {
-            ProtectionManager.Remove(ev.Player);
+            manager.Remove(ev.Player);
         }
 
-        public void OnDestroying(DestroyingEventArgs ev)
+        public void OnChangingRole(ChangingRoleEventArgs ev)
         {
-            ProtectionManager.Remove(ev.Player);
-        }
-
-        public void OnRoundEnded(RoundEndedEventArgs ev)
-        {
-            ProtectionManager.ClearAll();
+            manager.Remove(ev.Player);
         }
 
         public void OnRestartingRound()
         {
-            ProtectionManager.ClearAll();
+            manager.ClearAll();
         }
     }
 }

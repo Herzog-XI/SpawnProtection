@@ -6,9 +6,99 @@ using PlayerRoles;
 
 namespace SpawnProtection
 {
-    public static class ProtectionManager
+    internal sealed class ProtectionManager
     {
-        private static readonly Dictionary<int, ProtectionState> States = new Dictionary<int, ProtectionState>();
+        private readonly Plugin plugin;
+        private readonly Dictionary<Player, ProtectionState> states = new Dictionary<Player, ProtectionState>();
+
+        public ProtectionManager(Plugin plugin)
+        {
+            this.plugin = plugin;
+        }
+
+        public void Apply(Player player)
+        {
+            if (!IsEligible(player))
+            {
+                Remove(player);
+                return;
+            }
+
+            Remove(player);
+
+            DateTime now = DateTime.UtcNow;
+            ProtectionState state = new ProtectionState
+            {
+                FullProtectionEndsAt = now.AddSeconds(Math.Max(0f, plugin.Config.FullProtectionDuration)),
+                TeamProtectionEndsAt = now.AddSeconds(Math.Max(0f, plugin.Config.TeamProtectionDuration)),
+                FullProtectionRemoved = plugin.Config.FullProtectionDuration <= 0f,
+            };
+
+            states[player] = state;
+
+            if (plugin.Config.ShowTimer)
+                state.TimerCoroutine = Timing.RunCoroutine(Timer(player));
+        }
+
+        public void Remove(Player player)
+        {
+            if (player == null || !states.TryGetValue(player, out ProtectionState state))
+                return;
+
+            if (state.TimerCoroutine.IsRunning)
+                Timing.KillCoroutines(state.TimerCoroutine);
+
+            states.Remove(player);
+        }
+
+        public void RemoveFullProtection(Player player, bool showMessage)
+        {
+            if (player == null || !states.TryGetValue(player, out ProtectionState state) || !state.HasFullProtection)
+                return;
+
+            state.FullProtectionRemoved = true;
+
+            if (showMessage && !string.IsNullOrWhiteSpace(plugin.Config.AttackEndedHint))
+                player.ShowHint(plugin.Config.AttackEndedHint, plugin.Config.AttackEndedHintDuration);
+        }
+
+        public bool HasFullProtection(Player player)
+        {
+            return player != null && states.TryGetValue(player, out ProtectionState state) && state.HasFullProtection;
+        }
+
+        public bool HasTeamProtection(Player player)
+        {
+            return player != null && states.TryGetValue(player, out ProtectionState state) && state.HasTeamProtection;
+        }
+
+        public void ClearAll()
+        {
+            foreach (ProtectionState state in states.Values)
+            {
+                if (state.TimerCoroutine.IsRunning)
+                    Timing.KillCoroutines(state.TimerCoroutine);
+            }
+
+            states.Clear();
+        }
+
+        public static bool AreFriendly(Player first, Player second)
+        {
+            if (first == null || second == null)
+                return false;
+
+            Team firstTeam = first.Role.Team;
+            Team secondTeam = second.Role.Team;
+
+            if (firstTeam == secondTeam)
+                return true;
+
+            return (firstTeam == Team.FoundationForces && secondTeam == Team.Scientists)
+                || (firstTeam == Team.Scientists && secondTeam == Team.FoundationForces)
+                || (firstTeam == Team.ChaosInsurgency && secondTeam == Team.ClassD)
+                || (firstTeam == Team.ClassD && secondTeam == Team.ChaosInsurgency);
+        }
 
         public static bool IsEligible(Player player)
         {
@@ -16,116 +106,40 @@ namespace SpawnProtection
                 return false;
 
             RoleTypeId role = player.Role.Type;
-            return role != RoleTypeId.None &&
-                   role != RoleTypeId.Spectator &&
-                   role != RoleTypeId.Overwatch &&
-                   !player.IsScp;
+            return player.Role.Team != Team.SCPs
+                && role != RoleTypeId.Spectator
+                && role != RoleTypeId.Overwatch
+                && role != RoleTypeId.None;
         }
 
-        public static void Apply(Player player)
+        private IEnumerator<float> Timer(Player player)
         {
-            Remove(player);
+            float refreshRate = Math.Max(0.2f, plugin.Config.TimerRefreshRate);
 
-            if (!IsEligible(player) || Plugin.Instance == null)
-                return;
-
-            Config config = Plugin.Instance.Config;
-            DateTime now = DateTime.UtcNow;
-            var state = new ProtectionState
+            while (player != null && player.IsConnected && states.TryGetValue(player, out ProtectionState state))
             {
-                SpawnedAt = now,
-                FullProtectionEndsAt = now.AddSeconds(Math.Max(0f, config.FullProtectionDuration)),
-                TeamProtectionEndsAt = now.AddSeconds(Math.Max(0f, config.TeamProtectionDuration)),
-                FullProtectionRemovedByAttack = false,
-            };
+                if (!state.HasTeamProtection)
+                {
+                    states.Remove(player);
+                    yield break;
+                }
 
-            States[player.Id] = state;
-
-            if (config.ShowTimer)
-                state.TimerCoroutine = Timing.RunCoroutine(TimerCoroutine(player));
-        }
-
-        public static void Remove(Player player)
-        {
-            if (player == null || !States.TryGetValue(player.Id, out ProtectionState state))
-                return;
-
-            if (state.TimerCoroutine.IsRunning)
-                Timing.KillCoroutines(state.TimerCoroutine);
-
-            States.Remove(player.Id);
-        }
-
-        public static bool HasFullProtection(Player player)
-        {
-            return TryGetActiveState(player, out ProtectionState state) &&
-                   !state.FullProtectionRemovedByAttack &&
-                   DateTime.UtcNow < state.FullProtectionEndsAt;
-        }
-
-        public static bool HasTeamProtection(Player player)
-        {
-            return TryGetActiveState(player, out ProtectionState state) &&
-                   DateTime.UtcNow < state.TeamProtectionEndsAt;
-        }
-
-        public static void RemoveFullProtectionBecauseOfAttack(Player player)
-        {
-            if (player == null || !States.TryGetValue(player.Id, out ProtectionState state))
-                return;
-
-            if (!HasFullProtection(player))
-                return;
-
-            state.FullProtectionRemovedByAttack = true;
-            string message = Plugin.Instance?.Config.AttackEndedProtectionText;
-            if (!string.IsNullOrWhiteSpace(message))
-                player.ShowHint(message, 2f);
-        }
-
-        public static void ClearAll()
-        {
-            foreach (ProtectionState state in States.Values)
-            {
-                if (state.TimerCoroutine.IsRunning)
-                    Timing.KillCoroutines(state.TimerCoroutine);
-            }
-
-            States.Clear();
-        }
-
-        private static bool TryGetActiveState(Player player, out ProtectionState state)
-        {
-            state = null;
-            if (player == null || !States.TryGetValue(player.Id, out state))
-                return false;
-
-            if (!IsEligible(player) || DateTime.UtcNow >= state.TeamProtectionEndsAt)
-            {
-                Remove(player);
-                state = null;
-                return false;
-            }
-
-            return true;
-        }
-
-        private static IEnumerator<float> TimerCoroutine(Player player)
-        {
-            while (player != null && player.IsConnected && TryGetActiveState(player, out ProtectionState state))
-            {
-                Config config = Plugin.Instance.Config;
-                int full = Math.Max(0, (int)Math.Ceiling((state.FullProtectionEndsAt - DateTime.UtcNow).TotalSeconds));
-                int team = Math.Max(0, (int)Math.Ceiling((state.TeamProtectionEndsAt - DateTime.UtcNow).TotalSeconds));
-
-                string text = HasFullProtection(player)
-                    ? config.FullProtectionText.Replace("{full}", full.ToString()).Replace("{team}", team.ToString())
-                    : config.TeamProtectionText.Replace("{team}", team.ToString());
+                string text;
+                if (state.HasFullProtection)
+                {
+                    int seconds = Math.Max(0, (int)Math.Ceiling((state.FullProtectionEndsAt - DateTime.UtcNow).TotalSeconds));
+                    text = plugin.Config.FullProtectionHint?.Replace("{time}", seconds.ToString());
+                }
+                else
+                {
+                    int seconds = Math.Max(0, (int)Math.Ceiling((state.TeamProtectionEndsAt - DateTime.UtcNow).TotalSeconds));
+                    text = plugin.Config.TeamProtectionHint?.Replace("{time}", seconds.ToString());
+                }
 
                 if (!string.IsNullOrWhiteSpace(text))
-                    player.ShowHint(text, Math.Max(1.1f, config.TimerRefreshRate + 0.2f));
+                    player.ShowHint(text, refreshRate + 0.15f);
 
-                yield return Timing.WaitForSeconds(Math.Max(0.25f, config.TimerRefreshRate));
+                yield return Timing.WaitForSeconds(refreshRate);
             }
         }
     }

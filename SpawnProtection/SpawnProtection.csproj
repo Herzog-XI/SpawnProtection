@@ -2,12 +2,13 @@
   <PropertyGroup>
     <TargetFramework>net48</TargetFramework>
     <LangVersion>latest</LangVersion>
-    <Nullable>disable</Nullable>
-    <RootNamespace>SpawnProtection</RootNamespace>
     <AssemblyName>SpawnProtection</AssemblyName>
+    <RootNamespace>SpawnProtection</RootNamespace>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="EXILED" Version="9.0.0-beta.5" />
+    <PackageReference Include="ExMod.Exiled" Version="9.14.2" />
   </ItemGroup>
 </Project>

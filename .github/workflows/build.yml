@@ -21,15 +21,14 @@ jobs:
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v2
 
-      - name: Restore packages
-        run: nuget restore SpawnProtection.sln
+      - name: Restore
+        run: nuget restore SpawnProtection/SpawnProtection.csproj
 
       - name: Build
-        run: msbuild SpawnProtection.sln /p:Configuration=Release /p:Platform="Any CPU"
+        run: msbuild SpawnProtection/SpawnProtection.csproj /p:Configuration=Release
 
-      - name: Upload plugin DLL
+      - name: Upload DLL
         uses: actions/upload-artifact@v4
         with:
           name: SpawnProtection
           path: SpawnProtection/bin/Release/SpawnProtection.dll
-          if-no-files-found: error

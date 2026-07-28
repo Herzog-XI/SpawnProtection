@@ -5,34 +5,37 @@ namespace SpawnProtection
 {
     public sealed class Config : IConfig
     {
-        [Description("Whether SpawnProtection is enabled.")]
+        [Description("Whether the plugin is enabled.")]
         public bool IsEnabled { get; set; } = true;
 
         [Description("Whether debug messages are shown in the server console.")]
         public bool Debug { get; set; } = false;
 
-        [Description("Maximum duration in seconds of full damage immunity after spawning.")]
+        [Description("Maximum duration of full damage immunity after spawning, in seconds.")]
         public float FullProtectionDuration { get; set; } = 15f;
 
-        [Description("Duration in seconds of team-damage protection, counted from spawning.")]
+        [Description("Duration of team-damage protection from the moment of spawning, in seconds.")]
         public float TeamProtectionDuration { get; set; } = 60f;
 
-        [Description("Whether full protection ends when the protected player damages another player.")]
+        [Description("Remove full protection as soon as the protected player successfully attacks another player.")]
         public bool RemoveFullProtectionOnAttack { get; set; } = true;
 
-        [Description("Whether the protection timer is displayed to protected players.")]
+        [Description("Show a small protection timer to protected players.")]
         public bool ShowTimer { get; set; } = true;
 
         [Description("How often the timer is refreshed, in seconds.")]
         public float TimerRefreshRate { get; set; } = 1f;
 
-        [Description("Hint shown while full protection is active. Available placeholders: {full}, {team}.")]
-        public string FullProtectionText { get; set; } = "<align=right><voffset=-7em><size=20><color=#65D7FF>🛡 Vollschutz: {full}s</color>\n<color=#9DFF9D>🤝 Teamschutz: {team}s</color></size></voffset></align>";
+        [Description("Hint shown while full protection is active. Available placeholder: {time}.")]
+        public string FullProtectionHint { get; set; } = "<size=18><align=right><voffset=-16em><color=#55CCFF>Vollschutz: {time}s</color></voffset></align></size>";
 
-        [Description("Hint shown while only team protection is active. Available placeholder: {team}.")]
-        public string TeamProtectionText { get; set; } = "<align=right><voffset=-7em><size=20><color=#9DFF9D>🤝 Teamschutz: {team}s</color></size></voffset></align>";
+        [Description("Hint shown while only team protection is active. Available placeholder: {time}.")]
+        public string TeamProtectionHint { get; set; } = "<size=18><align=right><voffset=-16em><color=#66FF99>Teamschutz: {time}s</color></voffset></align></size>";
 
-        [Description("Brief message shown when full protection ends because the player attacked.")]
-        public string AttackEndedProtectionText { get; set; } = "<color=#FFD166>Vollschutz beendet – du hast angegriffen.</color>";
+        [Description("Message shown when full protection ends because the player attacked.")]
+        public string AttackEndedHint { get; set; } = "<color=#FFD166>Vollschutz beendet: Du hast angegriffen.</color>";
+
+        [Description("Duration of the attack-ended message, in seconds.")]
+        public float AttackEndedHintDuration { get; set; } = 3f;
     }
 }

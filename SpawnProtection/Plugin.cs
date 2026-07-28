@@ -1,7 +1,6 @@
 using System;
 using Exiled.API.Features;
 using Player = Exiled.Events.Handlers.Player;
-using Server = Exiled.Events.Handlers.Server;
 
 namespace SpawnProtection
 {
@@ -12,38 +11,37 @@ namespace SpawnProtection
         public override string Name => "SpawnProtection";
         public override string Author => "Herzog-XI";
         public override Version Version => new Version(1, 0, 0);
-        public override Version RequiredExiledVersion => new Version(9, 0, 0);
+        public override Version RequiredExiledVersion => new Version(9, 14, 2);
 
-        private EventHandlers handlers;
+        internal EventHandlers Handlers { get; private set; }
+        internal ProtectionManager ProtectionManager { get; private set; }
 
         public override void OnEnabled()
         {
             Instance = this;
-            handlers = new EventHandlers();
+            ProtectionManager = new ProtectionManager(this);
+            Handlers = new EventHandlers(ProtectionManager);
 
-            Player.Verified += handlers.OnVerified;
-            Player.ChangingRole += handlers.OnChangingRole;
-            Player.Hurting += handlers.OnHurting;
-            Player.Died += handlers.OnDied;
-            Player.Destroying += handlers.OnDestroying;
-            Server.RoundEnded += handlers.OnRoundEnded;
-            Server.RestartingRound += handlers.OnRestartingRound;
+            Player.Spawned += Handlers.OnSpawned;
+            Player.Hurting += Handlers.OnHurting;
+            Player.Died += Handlers.OnDied;
+            Player.ChangingRole += Handlers.OnChangingRole;
+            Exiled.Events.Handlers.Server.RestartingRound += Handlers.OnRestartingRound;
 
             base.OnEnabled();
         }
 
         public override void OnDisabled()
         {
-            Player.Verified -= handlers.OnVerified;
-            Player.ChangingRole -= handlers.OnChangingRole;
-            Player.Hurting -= handlers.OnHurting;
-            Player.Died -= handlers.OnDied;
-            Player.Destroying -= handlers.OnDestroying;
-            Server.RoundEnded -= handlers.OnRoundEnded;
-            Server.RestartingRound -= handlers.OnRestartingRound;
+            Player.Spawned -= Handlers.OnSpawned;
+            Player.Hurting -= Handlers.OnHurting;
+            Player.Died -= Handlers.OnDied;
+            Player.ChangingRole -= Handlers.OnChangingRole;
+            Exiled.Events.Handlers.Server.RestartingRound -= Handlers.OnRestartingRound;
 
-            ProtectionManager.ClearAll();
-            handlers = null;
+            ProtectionManager?.ClearAll();
+            Handlers = null;
+            ProtectionManager = null;
             Instance = null;
 
             base.OnDisabled();
