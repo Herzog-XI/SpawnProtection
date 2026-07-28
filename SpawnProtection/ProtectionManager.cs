@@ -2,7 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using Exiled.API.Features;
+using HintServiceMeow.Core.Enum;
+using HintServiceMeow.Core.Models.Hints;
+using HintServiceMeow.Core.Utilities;
 using PlayerRoles;
+using HsmHint = HintServiceMeow.Core.Models.Hints.Hint;
 
 namespace SpawnProtection
 {
@@ -27,13 +31,34 @@ namespace SpawnProtection
 
             Remove(player);
 
+            float fullProtectionDuration = player.Role.Team == Team.ChaosInsurgency
+                ? plugin.Config.ChaosFullProtectionDuration
+                : plugin.Config.FullProtectionDuration;
+
             DateTime now = DateTime.UtcNow;
             ProtectionState state = new ProtectionState
             {
-                FullProtectionEndsAt = now.AddSeconds(Math.Max(0f, plugin.Config.FullProtectionDuration)),
+                FullProtectionEndsAt = now.AddSeconds(Math.Max(0f, fullProtectionDuration)),
                 TeamProtectionEndsAt = now.AddSeconds(Math.Max(0f, plugin.Config.TeamProtectionDuration)),
-                FullProtectionRemoved = plugin.Config.FullProtectionDuration <= 0f,
+                FullProtectionRemoved = fullProtectionDuration <= 0f,
             };
+
+            if (plugin.Config.ShowTimer)
+            {
+                state.HudHint = new HsmHint
+                {
+                    Id = "spawn_protection_hud",
+                    Text = string.Empty,
+                    XCoordinate = plugin.Config.HudXCoordinate,
+                    YCoordinate = plugin.Config.HudYCoordinate,
+                    YCoordinateAlign = HintVerticalAlign.Bottom,
+                    Alignment = HintAlignment.Right,
+                    FontSize = Math.Max(1, plugin.Config.HudFontSize),
+                    SyncSpeed = HintSyncSpeed.Fast,
+                };
+
+                PlayerDisplay.Get(player).AddHint(state.HudHint);
+            }
 
             lock (syncRoot)
                 states[player] = state;
@@ -59,6 +84,7 @@ namespace SpawnProtection
                 states.Remove(player);
             }
 
+            RemoveHud(player, state);
             state.Dispose();
         }
 
@@ -75,6 +101,8 @@ namespace SpawnProtection
 
                 state.FullProtectionRemoved = true;
             }
+
+            UpdateTimer(player);
 
             if (showMessage && !string.IsNullOrWhiteSpace(plugin.Config.AttackEndedHint))
                 player.ShowHint(plugin.Config.AttackEndedHint, plugin.Config.AttackEndedHintDuration);
@@ -100,15 +128,18 @@ namespace SpawnProtection
 
         public void ClearAll()
         {
-            List<ProtectionState> activeStates;
+            List<KeyValuePair<Player, ProtectionState>> activeStates;
             lock (syncRoot)
             {
-                activeStates = new List<ProtectionState>(states.Values);
+                activeStates = new List<KeyValuePair<Player, ProtectionState>>(states);
                 states.Clear();
             }
 
-            foreach (ProtectionState state in activeStates)
-                state.Dispose();
+            foreach (KeyValuePair<Player, ProtectionState> entry in activeStates)
+            {
+                RemoveHud(entry.Key, entry.Value);
+                entry.Value.Dispose();
+            }
         }
 
         public static bool AreFriendly(Player first, Player second)
@@ -161,11 +192,17 @@ namespace SpawnProtection
                 return;
             }
 
+            if (state.HudHint == null)
+                return;
+
             string text;
             if (state.HasFullProtection)
             {
-                int seconds = Math.Max(0, (int)Math.Ceiling((state.FullProtectionEndsAt - DateTime.UtcNow).TotalSeconds));
-                text = plugin.Config.FullProtectionHint?.Replace("{time}", seconds.ToString());
+                int fullSeconds = Math.Max(0, (int)Math.Ceiling((state.FullProtectionEndsAt - DateTime.UtcNow).TotalSeconds));
+                int teamSeconds = Math.Max(0, (int)Math.Ceiling((state.TeamProtectionEndsAt - DateTime.UtcNow).TotalSeconds));
+                string fullText = plugin.Config.FullProtectionHint?.Replace("{time}", fullSeconds.ToString());
+                string teamText = plugin.Config.TeamProtectionHint?.Replace("{time}", teamSeconds.ToString());
+                text = $"{fullText}\n{teamText}";
             }
             else
             {
@@ -173,8 +210,22 @@ namespace SpawnProtection
                 text = plugin.Config.TeamProtectionHint?.Replace("{time}", seconds.ToString());
             }
 
-            if (!string.IsNullOrWhiteSpace(text))
-                player.ShowHint(text, Math.Max(0.35f, plugin.Config.TimerRefreshRate + 0.15f));
+            state.HudHint.Text = text ?? string.Empty;
+        }
+
+        private static void RemoveHud(Player player, ProtectionState state)
+        {
+            if (player == null || state?.HudHint == null)
+                return;
+
+            try
+            {
+                PlayerDisplay.Get(player).RemoveHint(state.HudHint);
+            }
+            catch
+            {
+                // The player may already be disconnected while the timer is being cleaned up.
+            }
         }
     }
 }
