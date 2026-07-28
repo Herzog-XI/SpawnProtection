@@ -30,13 +30,13 @@ namespace SpawnProtection
         public float TimerRefreshRate { get; set; } = 0.25f;
 
         [Description("Horizontal HUD coordinate. Higher values move the timer to the right.")]
-        public float HudXCoordinate { get; set; } = 650f;
+        public float HudXCoordinate { get; set; } = 900f;
 
         [Description("Vertical HUD coordinate. Higher values move the timer lower on the screen.")]
-        public float HudYCoordinate { get; set; } = 865f;
+        public float HudYCoordinate { get; set; } = 925f;
 
         [Description("HUD font size.")]
-        public int HudFontSize { get; set; } = 18;
+        public int HudFontSize { get; set; } = 16;
 
         [Description("Text shown while full protection is active. Available placeholder: {time}.")]
         public string FullProtectionHint { get; set; } = "<color=#55CCFF>Vollschutz: {time}s</color>";
