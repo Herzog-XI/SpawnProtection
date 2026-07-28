@@ -23,5 +23,3 @@ EXILED plugin for SCP: Secret Laboratory that protects newly spawned non-SCP pla
 The project targets .NET Framework 4.8 and uses `ExMod.Exiled` 9.14.2.
 
 GitHub Actions builds the plugin automatically. Download `SpawnProtection.dll` from the workflow artifact and place it in the EXILED Plugins folder.
-
-<!-- Temporary write-access test -->
