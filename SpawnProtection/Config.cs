@@ -11,8 +11,8 @@ namespace SpawnProtection
         [Description("Whether debug messages are shown in the server console.")]
         public bool Debug { get; set; } = false;
 
-        [Description("Maximum duration of full damage immunity after spawning, in seconds.")]
-        public float FullProtectionDuration { get; set; } = 15f;
+        [Description("Maximum duration of full player-damage immunity after spawning, in seconds.")]
+        public float FullProtectionDuration { get; set; } = 10f;
 
         [Description("Duration of team-damage protection from the moment of spawning, in seconds.")]
         public float TeamProtectionDuration { get; set; } = 60f;
