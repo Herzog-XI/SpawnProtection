@@ -11,11 +11,14 @@ namespace SpawnProtection
         [Description("Whether debug messages are shown in the server console.")]
         public bool Debug { get; set; } = false;
 
-        [Description("Maximum duration of full player-damage immunity for all eligible roles except Chaos, in seconds.")]
+        [Description("Maximum duration of full player-damage immunity for all eligible roles except Chaos and Tutorial, in seconds.")]
         public float FullProtectionDuration { get; set; } = 10f;
 
         [Description("Maximum duration of full player-damage immunity for Chaos Insurgency, in seconds.")]
         public float ChaosFullProtectionDuration { get; set; } = 8f;
+
+        [Description("Maximum duration of full player-damage immunity for Tutorial, in seconds.")]
+        public float TutorialFullProtectionDuration { get; set; } = 4f;
 
         [Description("Duration of team-damage protection from the moment of spawning, in seconds.")]
         public float TeamProtectionDuration { get; set; } = 60f;
@@ -30,10 +33,10 @@ namespace SpawnProtection
         public float TimerRefreshRate { get; set; } = 0.25f;
 
         [Description("Horizontal HUD offset from screen center. Positive values move the timer right; negative values move it left.")]
-        public float HudXCoordinate { get; set; } = 0f;
+        public float HudXCoordinate { get; set; } = -970f;
 
         [Description("Vertical HUD coordinate. Higher values move the timer lower on the screen.")]
-        public float HudYCoordinate { get; set; } = 900f;
+        public float HudYCoordinate { get; set; } = 1058f;
 
         [Description("HUD font size.")]
         public int HudFontSize { get; set; } = 16;
