@@ -37,9 +37,13 @@ namespace SpawnProtection
 
             Remove(player);
 
-            float fullProtectionDuration = player.Role.Team == Team.ChaosInsurgency
-                ? plugin.Config.ChaosFullProtectionDuration
-                : plugin.Config.FullProtectionDuration;
+            float fullProtectionDuration;
+            if (player.Role.Type == RoleTypeId.Tutorial)
+                fullProtectionDuration = plugin.Config.TutorialFullProtectionDuration;
+            else if (player.Role.Team == Team.ChaosInsurgency)
+                fullProtectionDuration = plugin.Config.ChaosFullProtectionDuration;
+            else
+                fullProtectionDuration = plugin.Config.FullProtectionDuration;
 
             DateTime now = DateTime.UtcNow;
             ProtectionState state = new ProtectionState
